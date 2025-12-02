@@ -1,91 +1,337 @@
+# 🛒 SLEEKMART - Order Management System
 # Project: End-to-End Analytics Pipeline Using dbt + Snowflake
 
-This project demonstrates the design and implementation of a complete analytics workflow using dbt (data build tool) and Snowflake. 
-It showcases modern ELT development practices, including modeling, testing, documentation, and warehouse orchestration.
+## 📋 Table of Contents
+- [Project Overview](#project-overview)
+- [Project Structure](#project-structure)
+- [Database Architecture](#database-architecture)
+- [Key Models](#key-models)
+- [Getting Started](#getting-started)
+- [Usage](#usage)
 
-## 🔹 Overview
+## 🎯 Project Overview
 
-The project builds a clean and well structured transformation pipeline that ingests raw data from Snowflake and turns it into trusted, analysis ready models.
-It includes staged models, business logic transformations, automated tests and data quality validations.
+SLEEKMART is an end-to-end data analytics solution for a retail order management system. The project implements a modern data warehouse architecture with three distinct layers (Landing, Processing, Consumption) using dbt for transformations and Snowflake as the data warehouse.
 
-## 🔹 Key Features
-### 1. Source Configuration
+## 📁 Project Structure
+```
+sleekmart_project/
+│
+├── 📄 dbt_project.yml              # dbt project configuration
+├── 📄 profiles.yml                 # Connection settings (gitignored)
+├── 📄 README.md                    # Project documentation
+├── 📄 .gitignore                   # Git ignore rules
+├── 📄 LICENSE
+│
+├── 📂 macros/                      # Custom Jinja macros
+│   ├── .gitkeep
+│   └── generate_schema_name.sql
+│
+├── 📂 models/                      # dbt models (SQL transformations)
+│   ├── sources.yml                # Source table definitions
+│   ├── schema.yml                 # Model documentation & tests
+│   │
+│   ├── 📂 staging/                # L2_PROCESSING - Staging layer
+│   │   ├── amount_stg.sql
+│   │   ├── customerorders_stg.sql
+│   │   ├── customers_stg.sql
+│   │   └── orders_stg.sql
+│   │
+│   └── 📂 marts/                  # L3_CONSUMPTION - Analytics layer
+│       ├── actualsales.sql
+│       ├── completedorders_fact.sql
+│       ├── customerrevenue.sql
+│       └── storeperformance.sql
+│
+├── 📂 seeds/                       # CSV reference data
+│   ├── .gitkeep
+│   └── targetsales.csv
+│
+├── 📂 tests/                       # Custom data quality tests
+│   ├── .gitkeep
+│   └── amount_stg_negative_check.sql
+│
+├── 📂 snapshots/                   # SCD Type 2 snapshots
+│
+├── 📂 sql_files/                   # Raw data generation scripts
+│   ├── customers.sql              # Customer dimension data
+│   ├── dates.sql                  # Date dimension data
+│   ├── employees.sql              # Employee dimension data
+│   ├── initialise.sql             # Database initialization script
+│   ├── orderitems.sql             # Order items fact data
+│   ├── orders.sql                 # Orders fact data
+│   ├── products.sql               # Product dimension data
+│   ├── stores.sql                 # Store dimension data
+│   └── suppliers.sql              # Supplier dimension data
+│
+└── 📂 target/                      # Compiled SQL & artifacts (gitignored)
+```
 
-*Raw Snowflake tables are registered using sources.yml, allowing dbt to*:
+## 🗄️ Database Architecture
 
-- consistently reference upstream landing tables
+### Three-Layer Architecture
+```
+┌─────────────────────────────────────────────┐
+│          L1_LANDING (Raw Data)              │
+│  ─────────────────────────────────────────  │
+│  • L1_CUSTOMERS                             │
+│  • L1_ORDERS                                │
+│  • L1_ORDERITEMS                            │
+│  • L1_PRODUCTS                              │
+│  • L1_SUPPLIERS                             │
+│  • L1_STORES                                │
+│  • L1_EMPLOYEES                             │
+│  • L1_DATES                                 │
+└──────────────────┬──────────────────────────┘
+                   │
+                   ↓
+┌─────────────────────────────────────────────┐
+│      L2_PROCESSING (Staging & Transform)    │
+│  ─────────────────────────────────────────  │
+│  • customers_stg                            │
+│  • orders_stg                               │
+│  • amount_stg                               │
+│  • customerorders_stg                       │
+└──────────────────┬──────────────────────────┘
+                   │
+                   ↓
+┌─────────────────────────────────────────────┐
+│   L3_CONSUMPTION (Analytics-Ready Tables)   │
+│  ─────────────────────────────────────────  │
+│  • actualsales                              │
+│  • storeperformance                         │
+│  • customerrevenue                          │
+│  • completedorders_fact                     │
+└─────────────────────────────────────────────┘
+```
 
-- track lineage from raw → staging → marts
+### Data Flow
+```mermaid
+graph LR
+    A[SQL Scripts] --> B[L1_LANDING]
+    B --> C[L2_PROCESSING]
+    C --> D[L3_CONSUMPTION]
+    E[Seeds] --> D
+    
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style B fill:#bbf,stroke:#333,stroke-width:2px
+    style C fill:#bfb,stroke:#333,stroke-width:2px
+    style D fill:#fbb,stroke:#333,stroke-width:2px
+```
 
-- run freshness and quality checks on ingestion layers
+## 📊 Key Models
 
-### 2. Staging Layer
+### Staging Layer (L2_PROCESSING)
+- **customers_stg** - Cleaned and organized customer information
+- **orders_stg** - Cleaned order details
+- **amount_stg** - Calculated product amounts (quantity × unit price)
+- **customerorders_stg** - Combined view of customer and order details
 
-*Each raw table is standardized and cleaned in the staging layer:*
+### Marts Layer (L3_CONSUMPTION)
+- **actualsales** - All sales transactions in one fact table
+- **storeperformance** - Key metrics showing each store’s performance
+- **customerrevenue** - Total revenue generated by each customer
+- **completedorders_fact** - Detailed list of all completed orders
 
-- Computed fields: Amount Model (amount_stg): Computes order amounts from quantity and unit price.
-- Consistent naming conventions: Combines customer first and last names into a full name for standardization like in the *customer_stg model*.
+## 🚀 Getting Started
 
-### 3. Intermediate & Business Models
+### Prerequisites
 
-*Models combine staging data to create business level entities, such as:*
+- Python 3.8+
+- Snowflake account
+- Git
 
-- Customer Revenue Model: Combines the Customers, Completed Orders, and Amount models to calculate each customer’s total revenue.
-- Store Performance Model: Uses the Target Sales seed and Actual Sales model to calculate and evaluate each store’s performance.
+### Installation
 
-These models represent the logic analysts or dashboards rely on.
+1. **Clone the repository**
+```bash
+   git clone   git clone https://github.com/yourusername/sleekmart_project.git
+   cd sleekmart_project
+```
 
-### 4. Seeds
-
-*Project seeds (CSV files)*
-- Sales targets. Loaded as warehouse tables using dbt’s seed command and referenced in the store performance model.
-
-### 5. Testing & Data Quality
-
-*The project includes:*
-
-- Generic tests (unique and not_null): Verify that customer ID, email, phone number, and address are present and unique.
-
-- Custom singular test: Checks for negative order amounts in the amount data.
-
-<pre> ```sql SELECT ORDERID FROM {{ ref('amount_stg') }} WHERE AMOUNT < 0; ``` </pre>
-
-### 6. Macros
+2. **Create virtual environment**
+```bash
+   python -m venv dbt_env
    
-*generate_schema_name*
+   # Windows
+   dbt_env\Scripts\activate
+   
+   # Mac/Linux
+   source dbt_env/bin/activate
+```
 
-- Uses a custom schema if provided.
+3. **Install dependencies**
+```bash
+   pip install dbt-snowflake
+```
 
-- Defaults to the target schema from the dbt profile if no custom schema is specified.
+4. **Configure profiles**
+   
+   Create `~/.dbt/profiles.yml`:
+```yaml
+   sleekmart_project:
+     outputs:
+       dev:
+         account: your_account.region.provider
+         database: SLEEKMART_OMS
+         user: your_username
+         password: your_password
+         role: accountadmin
+         warehouse: COMPUTE_WH
+         schema: L3_CONSUMPTION
+         threads: 1
+         type: snowflake
+     target: dev
+```
 
-- Helps ensure consistent schema assignment across models.
+5. **Initialize database**
+   
+   Run the SQL scripts in `sql_files/` in Snowflake:
+```sql
+   -- Run in this order:
+   1. initialise.sql      -- Creates database and schemas
+   2. customers.sql       -- Loads customer data
+   3. dates.sql          -- Loads date dimension
+   4. employees.sql      -- Loads employee data
+   5. products.sql       -- Loads product data
+   6. suppliers.sql      -- Loads supplier data
+   7. stores.sql         -- Loads store data
+   8. orders.sql         -- Loads order headers
+   9. orderitems.sql     -- Loads order line items
+```
 
-### 7. Documentation
+6. **Test connection**
+```bash
+   dbt debug
+```
 
-Each model and column includes rich descriptions via YAML.
+## 💻 Usage
 
-## 🔹 Tools & Technologies
+### Run All Models
+```bash
+dbt run
+```
 
-- dbt Core
+### Run Specific Layers
+```bash
+# Staging layer only
+dbt run --select staging.*
 
-- Snowflake Data Warehouse
+# Marts layer only
+dbt run --select marts.*
+```
 
-- Jinja templating
+### Run Specific Model
+```bash
+dbt run --select actualsales
+dbt run --select storeperformance
+```
 
-- SQL
+### Run Tests
+```bash
+# All tests
+dbt test
 
-- Git for version control
+# Source data tests
+dbt test --select source:*
 
-- VS Code development environment
+# Model tests
+dbt test --select amount_stg
+```
 
-## 🔹 How to Use the Project
+### Generate Documentation
+```bash
+# Generate and serve docs
+dbt docs generate
+dbt docs serve
+```
 
-- Clone the repository
+### Common Commands
+```bash
+# Full refresh (rebuild all tables from scratch)
+dbt run --full-refresh
 
-- Configure your Snowflake profile
+# Run models with their downstream dependencies
+dbt run --select actualsales+
 
-Run:
+# Run models with their upstream dependencies
+dbt run --select +actualsales
 
- - dbt seed
- -  dbt run
- - dbt test
+# Compile without running
+dbt compile
+
+# Clean generated files
+dbt clean
+```
+
+## 🧪 Data Quality Tests
+
+The project includes custom data quality tests:
+
+- **amount_stg_negative_check** - Ensures no negative amounts in calculations
+- **Uniqueness tests** - Ensures primary keys and customer information is unique
+- **Not null tests** - Validates required fields
+
+## 📈 Key Metrics & KPIs
+
+### Store Performance
+- Total sales by store
+- Sales vs. target achievement percentage
+- Store-level revenue trends
+
+### Customer Analytics
+- Customer lifetime value
+- Revenue per customer
+- Customer order frequency
+
+### Sales Analysis
+- Total sales by product category
+- Order completion rates
+- Average order value
+
+## 🛠️ Technology Stack
+
+- **Data Warehouse**: Snowflake
+- **Transformation Tool**: dbt (Data Build Tool)
+- **Version Control**: Git
+- **Languages**: SQL, Jinja
+
+## 📝 Project Configuration
+
+### dbt_project.yml
+```yaml
+models:
+  sleekmart_project:
+    staging:
+      +schema: l2_processing
+      +materialized: view
+    
+    marts:
+      +schema: l3_consumption
+      +materialized: table
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 👤 Author
+
+**Your Name**
+- GitHub: [@PriscillaJoan](https://github.com/priscillajoan)
+
+
+For questions or feedback, please reach out via [email@joanpriscillanjoroge.com](mailto:email@joanpriscillanjoroge.com)
+
+---
+
+**Built with ❤️ using dbt and Snowflake**
+
