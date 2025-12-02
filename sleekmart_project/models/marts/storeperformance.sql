@@ -1,0 +1,13 @@
+SELECT 
+    S.STOREID,
+    S.TOTALSALES,
+    TS.SALESTARGET,
+    ROUND(S.TOTALSALES/TS.SALESTARGET * 100,2) AS PERCENTAGE_ACHEIVED
+FROM 
+    {{ ref('actualsales')}} S
+JOIN
+     {{ref('targetsales') }} TS
+ON 
+    S.STOREID = TS.STOREID
+
+

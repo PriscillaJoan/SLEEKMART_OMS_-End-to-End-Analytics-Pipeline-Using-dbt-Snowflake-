@@ -1,0 +1,31 @@
+
+sources:
+  - name: landing 
+    description: Raw data tables in L1_LANDING schema
+    schema: l1_landing
+    database: sleekmart_oms
+    
+    tables:
+      - name: l1_orderitems
+        description: Order items
+        
+      - name: l1_orders
+        description: Orders header table
+        
+      - name: l1_customers
+        description: Customer information
+        
+      - name: l1_products
+        description: Product catalog
+        
+      - name: l1_suppliers
+        description: Supplier information
+        
+      - name: l1_stores
+        description: Store locations
+        
+      - name: l1_employees
+        description: Employee information
+        
+      - name: l1_dates
+        description: Date dimension

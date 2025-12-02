@@ -1,0 +1,28 @@
+# contains tests used to check whether customer information has been repeated or is null
+
+models:
+  - name: customers_stg
+    description: 'customer information'
+    columns: 
+      - name: CUSTOMERID
+        description: "primary key"
+        tests: 
+        - unique
+        - not_null
+      - name: email
+        description: 'customer email address'
+        tests:
+          - not_null
+          - unique
+
+      - name: phone
+        description: 'customer phone number'
+        tests:
+          - not_null
+          - unique
+
+      - name: address
+        description: 'where the customer lives'
+        tests:
+          - not null
+          - unique
